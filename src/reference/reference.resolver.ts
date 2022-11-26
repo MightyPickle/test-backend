@@ -1,4 +1,4 @@
-import { Query, Resolver } from '@nestjs/graphql'
+import { Args, Query, Resolver } from '@nestjs/graphql'
 import { RetailService } from '../retail_api/retail.service'
 import { DeliveryType, OrderStatus, ProductStatus } from '../graphql'
 

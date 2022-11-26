@@ -4,6 +4,7 @@ import axios, { AxiosInstance } from 'axios'
 import { ConcurrencyManager } from 'axios-concurrency'
 import { serialize } from '../tools'
 import { plainToClass } from 'class-transformer'
+import { OrdersResponse } from 'src/graphql'
 
 @Injectable()
 export class RetailService {
@@ -13,11 +14,11 @@ export class RetailService {
     this.axios = axios.create({
       baseURL: `${process.env.RETAIL_URL}/api/v5`,
       timeout: 10000,
-      headers: { },
+      headers: { 'X-API-KEY': process.env.RETAIL_KEY},
     })
 
     this.axios.interceptors.request.use((config) => {
-      // console.log(config.url)
+      console.log(config.url)
       return config
     })
     this.axios.interceptors.response.use(
@@ -26,13 +27,14 @@ export class RetailService {
         return r
       },
       (r) => {
-        // console.log("Error:", r.response.data)
+        console.log("Error:", r.response.data)
         return r
       },
     )
+
   }
 
-  async orders(filter?: OrdersFilter): Promise<[Order[], RetailPagination]> {
+  async orders(filter?: OrdersFilter): Promise<OrdersResponse> {
     const params = serialize(filter, '')
     const resp = await this.axios.get('/orders?' + params)
 
@@ -40,23 +42,44 @@ export class RetailService {
 
     const orders = plainToClass(Order, resp.data.orders as Array<any>)
     const pagination: RetailPagination = resp.data.pagination
-
-    return [orders, pagination]
+    return {orders, pagination}
   }
 
   async findOrder(id: string): Promise<Order | null> {
+    const params = serialize({site: 'demo-magazine', by: 'id'}, '')
+    const resp = await this.axios.get('/orders/' + id + '?' + params)
+    
+    if (!resp.data) throw new Error('RETAIL CRM ERROR')
 
+    const order = plainToClass(Order, resp.data.order)
+    return order
   }
 
+  // не разобралась откуда брать статусы заказов 
   async orderStatuses(): Promise<CrmType[]> {
 
+    const resp = await this.axios.get('/reference/order-types')
+
+    if (!resp.data) throw new Error('RETAIL CRM ERROR')
+
+    return Object.values(resp.data)
   }
 
   async productStatuses(): Promise<CrmType[]> {
+    const resp = await this.axios.get('/reference/product-statuses')
 
+    if (!resp.data) throw new Error('RETAIL CRM ERROR')
+
+    const statuses = plainToClass(CrmType, resp.data.productStatuses)
+    return Object.values(statuses)
   }
 
   async deliveryTypes(): Promise<CrmType[]> {
+    const resp = await this.axios.get('/reference/delivery-types')
 
+    if (!resp.data) throw new Error('RETAIL CRM ERROR')
+    
+    const types = plainToClass(CrmType, resp.data.deliveryTypes)
+    return Object.values(types)
   }
 }
